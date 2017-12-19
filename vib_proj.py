@@ -132,7 +132,7 @@ if not os.path.isfile('E_n.npy'):
     # E_n = 0.5 * ((d nc / dt)**2 + w0**2 * nc**2)
     E1 = vc**2 * 1E6
     E2 = w0[np.newaxis,...]**2 * nc[:-1,...]**2
-    En = 0.5 * (E1 + E2)
+    En = 0.5 * (E1 + E2) * THzToCm * CmToEv
 
     # np.save('E1.npy', E1)
     # np.save('E2.npy', E2)
