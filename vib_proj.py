@@ -90,100 +90,123 @@ def load_vibmodes_from_outcar(inf='OUTCAR', include_imag=False):
         modes  = modes[real_freq]
 
     return omegas, modes
-    
-############################################################
-# time step used in MD, in femtosecond
-dt = 1.0 
-if not os.path.isfile('E_n.npy'):
-    # load the trajectory from an NVE MD
-    geo, pa, va = posFromXdatcar('XDATCAR', direct=True,
-                                 return_vel=False, dt=1.0)
-    niter = pa.shape[0]
-    natom = pa.shape[1]
-
-    # the equilibrium POSCAR
-    p0 = read('POSCAR_eq', format='vasp').get_scaled_positions()
-
-    # read the vibration modes from OUTCAR
-    w, m = load_vibmodes_from_outcar('OUTCAR')
-
-    # deviation from the equilibrium positions
-    pd = pa - p0[np.newaxis,...]
-    # periodic boundary condition.
-    pd[pd > 0.5] -= 1.0
-    pd[pd <-0.5] += 1.0
-    pd = np.dot(pd, geo.cell).reshape((-1, natom * 3))
-
-    # normal mode coordinates
-    nc = np.dot(pd, m.reshape((-1, natom * 3)).T)
-    vc = np.diff(nc, axis=0) / dt
-
-    # save the frequencies to file, in unit of cm^-1
-    np.save('omega.npy', w)
-    # change vibration frequencies unit to eV, unit conversion values are those used
-    # in phonopy
-    THzToCm = 33.3564095198152
-    CmToEv  = 0.00012398418743309975
-    # to 2PiTHz
-    w0 = w / THzToCm * 2 * np.pi
-
-    # The energy of each normal mode, according to the "10.1038/ncomms11504" is then
-    # calculated by the following formula
-    # E_n = 0.5 * ((d nc / dt)**2 + w0**2 * nc**2)
-    E1 = vc**2 * 1E6
-    E2 = w0[np.newaxis,...]**2 * nc[:-1,...]**2
-    En = 0.5 * (E1 + E2) * THzToCm * CmToEv
-
-    # np.save('E1.npy', E1)
-    # np.save('E2.npy', E2)
-    np.save('E_n.npy', En)
-else:
-    En = np.load('E_n.npy')
-    w  = np.load('omega.npy')
+   
+def velocity_drift(x, a, b):
+    return a * x + b
 
 ############################################################
-import matplotlib as mpl
-# mpl.use('agg')
-mpl.rcParams['axes.unicode_minus'] = False
+if __name__ == '__main__':
+    # time step used in MD, in femtosecond
+    dt = 1.0 
+    if not os.path.isfile('E_n.npy'):
+        # load the trajectory from an NVE MD
+        geo, pa, va = posFromXdatcar('XDATCAR', direct=True,
+                                     return_vel=False, dt=1.0)
+        niter = pa.shape[0]
+        natom = pa.shape[1]
 
-import matplotlib.pyplot as plt
+        # the equilibrium POSCAR
+        # p0 = read('POSCAR_eq', format='vasp').get_scaled_positions()
+        # p0 = read('knew.vasp').get_scaled_positions()
+        p0 = read('xdat_1_opt.vasp').get_scaled_positions()
 
-fig = plt.figure()
-fig.set_size_inches(4.0, 2.5)
-ax      = plt.subplot()
+        # read the vibration modes from OUTCAR
+        w, m = load_vibmodes_from_outcar('OUTCAR')
 
-Ntime = En.shape[0]
-Nmode = En.shape[1]
-ModeI = np.arange(Nmode) + 1
-T     = 60
-Nmax  = 5
-########################################
-# energy_of_mode = En[T-1]
-energy_of_mode = np.average(En, axis=0)
-loc_max_peak   = np.argsort(energy_of_mode)[-Nmax:]
+        # ########################################
+        # # subtract the drift in the x and y direction
+        # ########################################
+        # from scipy.optimize import curve_fit
+        # T = np.arange(niter)
+        # # drift in x direction
+        # val_x, err = curve_fit(velocity_drift, T, pa[:,0,0])
+        # # drift in y direction
+        # val_y, err = curve_fit(velocity_drift, T, pa[:,0,1])
+        # pa[:,:,0] -= (T * val_x[0])[:,np.newaxis]
+        # pa[:,:,1] -= (T * val_y[0])[:,np.newaxis]
+        # # periodic boundary condition.
+        # pa[pa > 1.0] -= 1.0
+        # pa[pa < 0.0] += 1.0
+        # np.save('pa.npy', pa)
+        # ########################################
 
-# ax.vlines(ModeI, ymin=0.0,
-ax.vlines(w, ymin=0.0,
-          ymax=energy_of_mode,
-          lw=1.0, color='k')
+        # deviation from the equilibrium positions
+        pd = pa - p0[np.newaxis,...]
+        # periodic boundary condition.
+        pd[pd > 0.5] -= 1.0
+        pd[pd <-0.5] += 1.0
+        pd = np.dot(pd, geo.cell).reshape((-1, natom * 3))
 
-for pk in loc_max_peak:
-    # ax.text(ModeI[pk], energy_of_mode[pk] * 1.01, 'N=%d' % ModeI[pk],
-    ax.text(w[pk], energy_of_mode[pk] * 1.01, 'N=%d' % ModeI[pk],
-            ha='center', va='bottom',
-            fontsize='x-small',
-            color='red',
-            )
+        # normal mode coordinates
+        nc = np.dot(pd, m.reshape((-1, natom * 3)).T)
+        vc = np.diff(nc, axis=0) / dt
 
-# ax.set_xlim(0, nsw)
-# ax.set_ylim(0.0, 8.0)
+        # save the frequencies to file, in unit of cm^-1
+        np.save('omega.npy', w)
+        # change vibration frequencies unit to eV, unit conversion values are those used
+        # in phonopy
+        THzToCm = 33.3564095198152
+        CmToEv  = 0.00012398418743309975
+        # to 2PiTHz
+        w0 = w / THzToCm * 2 * np.pi
 
-# ax.set_xlabel('Mode Number',   fontsize='small', labelpad=5)
-ax.set_xlabel('Wavenumber [cm$^{-1}$]', fontsize='small', labelpad=5)
-ax.set_ylabel('Energy [eV]', fontsize='small', labelpad=8)
-ax.tick_params(which='both', labelsize='x-small')
+        # The energy of each normal mode, according to the "10.1038/ncomms11504" is then
+        # calculated by the following formula
+        # E_n = 0.5 * ((d nc / dt)**2 + w0**2 * nc**2)
+        E1 = vc**2 * 1E6
+        E2 = w0[np.newaxis,...]**2 * nc[:-1,...]**2
+        En = 0.5 * (E1 + E2) * THzToCm * CmToEv
 
-########################################
-plt.tight_layout(pad=0.2)
-plt.savefig('kaka.png', dpi=360)
-plt.show()
+        # np.save('E1.npy', E1)
+        # np.save('E2.npy', E2)
+        np.save('E_n.npy', En)
+    else:
+        En = np.load('E_n.npy')
+        w  = np.load('omega.npy')
+
+    ############################################################
+    import matplotlib as mpl
+    # mpl.use('agg')
+    mpl.rcParams['axes.unicode_minus'] = False
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    fig.set_size_inches(4.0, 2.5)
+    ax      = plt.subplot()
+
+    Ntime = En.shape[0]
+    Nmode = En.shape[1]
+    ModeI = np.arange(Nmode) + 1
+    T     = 60
+    Nmax  = 5
+    ########################################
+    # energy_of_mode = En[T-1]
+    energy_of_mode = np.average(En, axis=0)
+    loc_max_peak   = np.argsort(energy_of_mode)[-Nmax:]
+
+    # ax.vlines(ModeI, ymin=0.0,
+    ax.vlines(w, ymin=0.0,
+              ymax=energy_of_mode,
+              lw=1.0, color='k')
+
+    for pk in loc_max_peak:
+        # ax.text(ModeI[pk], energy_of_mode[pk] * 1.01, 'N=%d' % ModeI[pk],
+        ax.text(w[pk], energy_of_mode[pk] * 1.01, 'N=%d' % ModeI[pk],
+                ha='center', va='bottom',
+                fontsize='x-small',
+                color='red',
+                )
+
+    # ax.set_xlim(0, nsw)
+    # ax.set_ylim(0.0, 8.0)
+
+    # ax.set_xlabel('Mode Number',   fontsize='small', labelpad=5)
+    ax.set_xlabel('Wavenumber [cm$^{-1}$]', fontsize='small', labelpad=5)
+    ax.set_ylabel('Energy [eV]', fontsize='small', labelpad=8)
+    ax.tick_params(which='both', labelsize='x-small')
+
+    ########################################
+    plt.tight_layout(pad=0.2)
+    plt.savefig('kaka.png', dpi=360)
+    plt.show()
