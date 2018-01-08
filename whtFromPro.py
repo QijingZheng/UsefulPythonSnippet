@@ -4,7 +4,7 @@ import re, os, sys
 import numpy as np
 
 ################################################################################    
-def WeightFromPro(infile='PROCAR', lsorbit=False):
+def WeightFromPro(infile='PROCAR', lsorbit=False, use_last_column=True):
     """
     Contribution of selected atoms to the each KS orbital
     """
@@ -19,7 +19,7 @@ def WeightFromPro(infile='PROCAR', lsorbit=False):
 
     # Weights = np.asarray([line.split()[-1] for line in FileContents
     #                       if not re.search('[a-zA-Z]', line)], dtype=float)
-    Weights = np.asarray([line.split()[1:-1] for line in FileContents
+    Weights = np.asarray([line.split()[1:] for line in FileContents
                           if not re.search('[a-zA-Z]', line)], dtype=float)
 
     kpt_weight = np.asarray([line.split()[-1] for line in FileContents if 'weight' in line], dtype=float)
@@ -37,6 +37,11 @@ def WeightFromPro(infile='PROCAR', lsorbit=False):
     else:
         Weights.resize(nspin, nkpts, nbands, nions, nlmax)
 
+    if use_last_column:
+        Weights = Weights[..., -1]
+    else:
+        Weights = Weights[..., :-1]
+
     kpt_weight.resize(nspin, nkpts)
     energies.resize(nspin, nkpts, nbands)
     
@@ -48,7 +53,8 @@ whichSpin   = 0
 # select the k-point index, starting from 0
 whichKpoint = 0
 # select the atom index, starting from 0
-whichAtom   = [0, 1, 2]
+m = np.arange(54)
+w = np.arange(54) + 54
 
 if __name__ == '__main__':
     rundir = sys.argv[1]
@@ -56,9 +62,11 @@ if __name__ == '__main__':
     outF   = rundir + '/enw.dat'
 
     en, kptw, wht = WeightFromPro(proF)
-    # sum over orbital
-    wht = np.sum(wht[whichSpin, whichKpoint], axis=-1)
-    # sum over atoms
-    wht = np.sum(wht[:, whichAtom], axis=-1)
+    # select the spin and the k-point
+    wht = wht[whichSpin, whichKpoint]
 
-    np.savetxt(outF, np.array([en[whichSpin, whichKpoint, :], wht]).T, fmt='%8.4f')
+    # sum over atoms
+    wht_m = np.sum(wht[:, m], axis=-1)
+    wht_w = np.sum(wht[:, w], axis=-1)
+
+    np.savetxt(outF, np.vstack([en[whichSpin, whichKpoint, :], wht_m, wht_w]), fmt='%8.4f')
