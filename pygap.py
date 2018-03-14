@@ -2,6 +2,7 @@
 
 import os, sys
 import numpy as np
+from optparse import OptionParser
 
 ############################################################
 def get_bandinfo_from_outcar(inf='OUTCAR'):
@@ -210,17 +211,26 @@ def format_band_info(sys_info, band_info):
 
     print lines
 
+def command_line_arg():
+    usage = "usage: %prog [options] OUTCAR1 OUTCAR2..."  
+    par = OptionParser(usage=usage)
+
+    par.add_option('-r', '--ratio',
+            action='store', type="float",
+            dest='ratio', default=0.2,
+            help='')
+
+    return  par.parse_args( )
+
 ############################################################
 if __name__ == '__main__':
-    if (len(sys.argv) <= 1):
-        if os.path.isfile('OUTCAR'):
-            sys.argv.append('OUTCAR')
-        else:
-            print "Usage: {:s} OUTCAR1 [OUTCAR2, OUTCAR3...]".format(sys.argv[0])
-            sys.exit(-1)
+    opts, args = command_line_arg()
 
-    for inf in sys.argv[1:]:
+    if (len(args) == 0):
+        if os.path.isfile('OUTCAR'):
+            args.append('OUTCAR')
+
+    for inf in args:
         if os.path.isfile(inf):
             print inf, "->"
-            find_band_info(inf)
-
+            find_band_info(inf, opts.ratio)
