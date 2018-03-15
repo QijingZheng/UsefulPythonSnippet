@@ -167,7 +167,7 @@ def format_band_info(sys_info, band_info):
     else:
         lines += "-" * 32 + '\n'
     
-    for band_label in ['VBM', 'CBM']:
+    for band_label in ['CBM', 'VBM']:
         for ii, prefix in enumerate(['i', 'e', 'k']):
             if ii == 1:
                 lines += '{:^5s}'.format(band_label)
