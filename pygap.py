@@ -138,6 +138,7 @@ def find_band_info(inf='OUTCAR', ratio=0.2):
         band_info.append(
                 dict((("IVBM", ivbm + 1), ("ICBM", icbm + 1),
                       ("EVBM", evbm), ("ECBM", ecbm),
+                      ("VBM_KPT_IND", vkpt_index), ("CBM_KPT_IND", ckpt_index),
                       ("KVBM", kvbm), ("KCBM", kcbm),
                       ("GAP",  ecbm - evbm),
                       ('NOTE', which_gap)
@@ -203,6 +204,31 @@ def format_band_info(sys_info, band_info):
     for ispin in range(nspin):
         lines += "{:^22s}".format(band_info[ispin]["NOTE"])
     lines += '\n'
+
+    if nspin == 2:
+        if ('_Gap' in band_info[0]["NOTE"]) and ('_Gap' in band_info[1]["NOTE"]):
+            vbm_erg_spin = np.array([xx["EVBM"] for xx in band_info])
+            cbm_erg_spin = np.array([xx["ECBM"] for xx in band_info])
+            vbm_kpt_spin = np.array([xx["VBM_KPT_IND"] for xx in band_info])
+            cbm_kpt_spin = np.array([xx["CBM_KPT_IND"] for xx in band_info])
+
+            vsort = np.argsort(vbm_erg_spin)
+            csort = np.argsort(cbm_erg_spin)
+
+            vbm_spin_erg_max = vbm_erg_spin[vsort[-1]]
+            cbm_spin_erg_min = cbm_erg_spin[csort[0]]
+            vbm_spin_kpt_ind = vbm_kpt_spin[vsort[-1]]
+            cbm_spin_kpt_ind = cbm_kpt_spin[csort[0]]
+
+            total_gap = cbm_spin_erg_min - vbm_spin_erg_max
+            if vbm_spin_kpt_ind == cbm_spin_kpt_ind:
+                note = 'Direct_Gap'
+            else:
+                note = 'inDirect_Gap'
+
+            # lines += ' ' * 10 + '_' * 44 + '\n'
+            lines += ' ' * 10 + "{:^44.5f}".format(total_gap) + '\n'
+            lines += ' ' * 10 + "{:^44s}".format(note) + '\n'
 
     if nspin == 2:
         lines += "-" * 54
