@@ -9,6 +9,8 @@ mpl.use('agg')
 mpl.rcParams['axes.unicode_minus'] = False
 
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 ############################################################
 def WeightFromPro(infile='PROCAR', whichAtom=None, spd=None):
     """
@@ -82,6 +84,8 @@ whichK  = 0
 # which atoms
 whichA  = np.array([12, 34, 35], dtype=int) - 1
 # whichB  = range(54)
+Alabel  = 'A'
+Blabel  = 'B'
 
 if os.path.isfile('all_wht.npy'):
     Wht = np.load('all_wht.npy')
@@ -92,8 +96,8 @@ else:
     Enr = Enr[:, whichS,whichK, :]
     Wht = Wht[:, whichS,whichK, :]
 
-    # Wht1 = parallel_wht(runDirs, whichA, nproc=nproc)[:, 0,0, :]
-    # Wht2 = parallel_wht(runDirs, whichB, nproc=nproc)[:, 0,0, :]
+    # Enr, Wht1 = parallel_wht(runDirs, whichA, nproc=nproc)[:, whichS,whichK, :]
+    # Enr, Wht2 = parallel_wht(runDirs, whichB, nproc=nproc)[:, whichS,whichK, :]
     # Wht = Wht1 / (Wht1 + Wht2)
     np.save('all_wht.npy', Wht)
     np.save('all_en.npy', Enr)
@@ -108,12 +112,75 @@ nband   = Enr.shape[1]
 T, dump = np.mgrid[0:nsw:dt, 0:nband]
 sFac    = 8
 
-ax.scatter( T, Enr, s=Wht / Wht.max() * sFac, color='red', lw=0.0, zorder=1)
-for ib in range(nband):
-    ax.plot(T[:,ib], Enr[:,ib], lw=0.5, color='k', alpha=0.5)
+############################################################
+# METHOD 1.
+############################################################
+# use scatter to plot the band 
+# ax.scatter( T, Enr, s=Wht / Wht.max() * sFac, color='red', lw=0.0, zorder=1)
+# for ib in range(nband):
+#     ax.plot(T[:,ib], Enr[:,ib], lw=0.5, color='k', alpha=0.5)
+
+############################################################
+# METHOD 2.
+############################################################
+# use colored scatter to plot the band 
+img = ax.scatter(T, Enr, s=1.0, c=Wht, lw=0.0, zorder=1,
+                 vmin=Wht.min(),
+                 vmax=Wht.max(),
+                 cmap='jet_r')
+# for ib in range(nband):
+#     ax.plot(T[:,ib], Enr[:,ib], lw=0.5, color='k', alpha=0.5)
+
+divider = make_axes_locatable(ax)
+ax_cbar = divider.append_axes('right', size='5%', pad=0.02)
+cbar = plt.colorbar(img, cax=ax_cbar,
+                    orientation='vertical')
+cbar.set_ticks([Wht.min(), Wht.max()])
+cbar.set_ticklabels([Alabel, Blabel])
+
+############################################################
+# METHOD 3.
+############################################################
+# # use color strip to plot the band
+#
+# LW    = 1.0
+# DELTA = 0.3
+# norm  = mpl.colors.Normalize(vmin=Wht.min(),
+#                              vmax=Wht.max())
+# # create a ScalarMappable and initialize a data structure
+# s_m   = mpl.cm.ScalarMappable(cmap='jet_r', norm=norm)
+# s_m.set_array([Wht])
+#
+# x     = np.arange(0, nsw, dt)
+# # for iband in range(nband):
+# for iband in range(100, 110):
+#     print('Processing band: {:4d}...'.format(iband))
+#     y = Enr[:,iband]
+#     z = Wht[:,iband]
+#
+#     ax.plot(x, y,
+#             lw=LW + 2 * DELTA,
+#             color='gray', zorder=1)
+#
+#     points = np.array([x, y]).T.reshape(-1, 1, 2)
+#     segments = np.concatenate([points[:-1], points[1:]], axis=1)
+#     lc = LineCollection(segments,
+#                         colors=[s_m.to_rgba(ww) for ww in (z[1:] + z[:-1])/2.]
+#                         )
+#     # lc.set_array((z[1:] + z[:-1]) / 2)
+#     lc.set_linewidth(LW)
+#     ax.add_collection(lc)
+#
+#     divider = make_axes_locatable(ax)
+#     ax_cbar = divider.append_axes('right', size='5%', pad=0.02)
+#     cbar = plt.colorbar(s_m, cax=ax_cbar,
+#                         # ticks=[Wht.min(), Wht.max()],
+#                         orientation='vertical')
+#     cbar.set_ticks([Wht.min(), Wht.max()])
+#     cbar.set_ticklabels([Alabel, Blabel])
 
 ax.set_xlim(0, nsw)
-ax.set_ylim(0.0, 8.0)
+# ax.set_ylim(0.0, 8.0)
 
 ax.set_xlabel('Time [fs]',   fontsize='small', labelpad=5)
 ax.set_ylabel('Energy [eV]', fontsize='small', labelpad=8)
