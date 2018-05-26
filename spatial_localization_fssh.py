@@ -96,9 +96,13 @@ else:
     Enr = Enr[:, whichS,whichK, :]
     Wht = Wht[:, whichS,whichK, :]
 
-    # Enr, Wht1 = parallel_wht(runDirs, whichA, nproc=nproc)[:, whichS,whichK, :]
-    # Enr, Wht2 = parallel_wht(runDirs, whichB, nproc=nproc)[:, whichS,whichK, :]
+    # Enr, Wht1 = parallel_wht(runDirs, whichA, nproc=nproc)
+    # Enr, Wht2 = parallel_wht(runDirs, whichB, nproc=nproc)
+    # Enr = Enr[:, whichS,whichK, :]
+    # Wht1 = Wht1[:, whichS,whichK, :]
+    # Wht2 = Wht2[:, whichS,whichK, :]
     # Wht = Wht1 / (Wht1 + Wht2)
+
     np.save('all_wht.npy', Wht)
     np.save('all_en.npy', Enr)
 
