@@ -6,10 +6,27 @@ import time
 
 
 def find_fermi_level(band_energies, kpt_weight,
-                     nelect, occ=2.0, sigma=0.01, nedos=100,
+                     nelect, occ=None, sigma=0.01, nedos=100,
                      soc_band=False,
                      nmax=1000):
     '''
+    Locate ther Fermi level from the band energies, k-points weights and number
+    of electrons. 
+                                             1.0
+                Ne = \sum_{n,k} --------------------------- * w_k
+                                  ((E_{nk}-E_f)/sigma) 
+                                e                      + 1
+
+
+    Inputs:
+        band_energies: The band energies of shape (nspin, nkpts, nbnds)
+        kpt_weight: The weight of each k-points.
+        nelect: Number of electrons.
+        occ:  1.0 for spin-polarized/SOC band energies, else 2.0.
+        sigma: Broadening parameter for the Fermi-Dirac distribution.
+        nedos: number of discrete points in approximately locating Fermi level.
+        soc_band: band energies from SOC calculations?
+        nmax: maximum iteration in finding the exact Fermi level.
     '''
 
     if band_energies.ndim == 2:
@@ -17,10 +34,11 @@ def find_fermi_level(band_energies, kpt_weight,
 
     nspin, nkpts, nbnds = band_energies.shape
 
-    if nspin == 1 and (not soc_band):
-        occ = 2.0
-    else:
-        occ = 1.0
+    if occ is None:
+        if nspin == 1 and (not soc_band):
+            occ = 2.0
+        else:
+            occ = 1.0
 
     if nbnds > nedos:
         nedos = nbnds * 5
@@ -101,7 +119,9 @@ def find_fermi_level(band_energies, kpt_weight,
     for ii in range(nmax):
         e_fermi = (e_lower + e_upper) / 2.
 
-        F_nk = occ / (np.exp(band_energies - e_fermi) + 1)
+        z = (band_energies - e_fermi) / sigma
+        z = z.clip(-100, 100)
+        F_nk = occ / (np.exp(z) + 1)
         N = np.sum(F_nk * kpt_weight[None, :, None])
         # print ii, e_lower, e_upper, N
 
@@ -111,18 +131,20 @@ def find_fermi_level(band_energies, kpt_weight,
             raise ValueError("Cannot reach the specified precision!")
 
         if (N > nelect):
-            if not lower_B: e_lower -= de
+            if not lower_B:
+                e_lower -= de
             upper_B = True
             e_upper = e_fermi
         else:
-            if not upper_B: e_upper += de
+            if not upper_B:
+                e_upper += de
             lower_B = True
             e_lower = e_fermi
 
     if (ii == nmax - 1):
         raise ValueError("Cannot reach the specified precision!")
 
-    return e_fermi
+    return e_fermi, F_nk
 
 
 if __name__ == "__main__":
@@ -138,4 +160,5 @@ if __name__ == "__main__":
 
     e_nk = np.load('e_nk.npy')
 
-    print find_fermi_level(e_nk, kw, nelect=54, sigma=0.01, soc_band=True)
+    ef, f_nk = find_fermi_level(e_nk, kw, nelect=54, sigma=0.01, soc_band=True)
+    print ef
