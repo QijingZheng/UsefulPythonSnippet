@@ -44,6 +44,8 @@ def mk_supercell(cml):
                 )
         sc = sc[new_atom_index]
 
+    org_chem_symbols = np.array(sc.get_chemical_symbols()) 
+
     # New order of chemical symbols
     if arg.new_sym_order:
         assert set(arg.new_sym_order) == set(org_chem_symbols)
