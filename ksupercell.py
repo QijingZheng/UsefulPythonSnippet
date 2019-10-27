@@ -27,6 +27,9 @@ def parse_cml_args(cml):
     arg.add_argument('-s', '--size', dest='size', action='store', type=int,
                      default=[1, 1, 1], nargs=3,
                      help='The supercell size.')
+    arg.add_argument('-v', '--vacuum', dest='vacuum', action='store', type=float,
+                     default=None, 
+                     help='Set new vacuum size.')
 
     return arg.parse_args(cml)
 
@@ -44,7 +47,7 @@ def mk_supercell(cml):
                 )
         sc = sc[new_atom_index]
 
-    org_chem_symbols = np.array(sc.get_chemical_symbols()) 
+    org_chem_symbols = np.array(sc.get_chemical_symbols())
 
     # New order of chemical symbols
     if arg.new_sym_order:
@@ -58,6 +61,10 @@ def mk_supercell(cml):
     new_atom_index = [ii for ss in chem_sym_order
                          for ii in org_atom_index[sc.symbols == ss]]
     sc = sc[new_atom_index]
+
+    # add vacuum 
+    if arg.vacuum:
+        sc.center(vacuum=arg.vacuum / 2., axis=2)
 
     write(arg.out, sc, vasp5=True, direct=True)
 
