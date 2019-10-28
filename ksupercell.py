@@ -72,10 +72,12 @@ def mk_supercell(cml):
     sc = sc[new_atom_index]
 
     if arg.out:
-        write(arg.out, sc, vasp5=True, direct=True)
+        write(arg.out, sc, vasp5=True, direct=True,
+              label=open(arg.poscar).readline().strip())
     else:
         write('out_' + 'x'.join(["%d" % x for x in arg.size]) + '.vasp',
-               sc, vasp5=True, direct=True)
+              sc, vasp5=True, direct=True,
+              label=open(arg.poscar).readline().strip())
 
 if __name__ == '__main__':
     mk_supercell(sys.argv[1:])
