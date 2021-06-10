@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import fft, ifft, fftfreq, fftshift
 from os.path import isfile
 
-def extract_from_vasp_outcar (outFile = 'OUTCAR', whichK=1):
+def extract_from_vasp_outcar (outFile = 'OUTCAR', whichK=1, whichS=1):
     # outFile = 'OUTCAR'
 
     OUTCAR = [line for line in open(outFile, 'r') if line.strip()]
@@ -17,9 +17,12 @@ def extract_from_vasp_outcar (outFile = 'OUTCAR', whichK=1):
         if 'NBANDS' in line and 'NKPTS' in line:
             NBANDS = int(line.split()[-1])
             NKPTS  = int(line.split()[ 3])
+        if 'ISPIN  =' in line:
+            ISPIN = int(line.split()[2])
             break
-    print 'Number of Bands: %d' % NBANDS
-    print 'Number of Kpoints: %d' % NKPTS
+    print('Number of Spins: %d' % ISPIN)
+    print('Number of Bands: %d' % NBANDS)
+    print('Number of Kpoints: %d' % NKPTS)
 
     # where_scf_ends = [ii for ii, line in enumerate(OUTCAR)
     #                 if 'aborting loop because EDIFF' in line]
@@ -38,23 +41,28 @@ def extract_from_vasp_outcar (outFile = 'OUTCAR', whichK=1):
     # TDKSEN = np.zeres((Niters, NBANDS))
     TDKSEN = []
     for it, ii in enumerate(where_Efermi_starts):
-        start = ii + 1
-        end   = start + (NBANDS + 2) * NKPTS
+        if ISPIN == 1:
+            start = ii + 1
+            end   = start + (NBANDS + 2) * NKPTS
+        else:
+            start = ii + 1
+            end   = start + (NBANDS + 2) * NKPTS * ISPIN + 2
+
         tmp = [ line.split()[1] for line in OUTCAR[start:end]
                 if not re.search('[a-zA-Z]', line) ]
         TDKSEN += [tmp]
-    TDKSEN = np.asarray(TDKSEN, dtype=float).reshape((-1, NKPTS, NBANDS))
+    TDKSEN = np.asarray(TDKSEN, dtype=float).reshape((-1, ISPIN, NKPTS, NBANDS))
 
     assert TDKSEN.shape[0] == Niters
     # np.savetxt('tden.dat', TDKSEN, fmt='%10.4f')
 
-    return TDKSEN[:,whichK-1,:]
+    return TDKSEN[:,whichS-1,whichK-1,:]
 
 ################################################################################
 if isfile('tden.npy'):
     TDKS = np.load('tden.npy')
 else:
-    TDKS = extract_from_vasp_outcar()
+    TDKS = extract_from_vasp_outcar(whichS=1)
     np.save('tden.npy', TDKS)
 
 NSW   = TDKS.shape[0]
