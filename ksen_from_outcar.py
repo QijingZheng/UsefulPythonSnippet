@@ -62,7 +62,8 @@ def extract_from_vasp_outcar (outFile = 'OUTCAR', whichK=1, whichS=1):
 if isfile('tden.npy'):
     TDKS = np.load('tden.npy')
 else:
-    TDKS = extract_from_vasp_outcar(whichS=1)
+    # only plot first spin and first k-points
+    TDKS = extract_from_vasp_outcar(whichK=1, whichS=1)
     np.save('tden.npy', TDKS)
 
 NSW   = TDKS.shape[0]
